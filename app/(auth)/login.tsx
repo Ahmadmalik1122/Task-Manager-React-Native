@@ -1,3 +1,6 @@
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router"; // Navigation ke liye
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -33,16 +36,25 @@ export default function Login() {
     try {
       if (isSignUp) {
         await createUserWithEmailAndPassword(auth, email, password);
-        Alert.alert("Welcome!", "Your account has been created.");
+        Alert.alert("Welcome!", "Your account has been created successfully.");
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
     } catch (error: any) {
-      let errorMessage = "Something went wrong.";
+      console.log(error.code);
+      let errorMessage = "An error occurred. Please try again.";
+
       if (error.code === "auth/user-not-found")
-        errorMessage = "User not found.";
+        errorMessage = "No user found with this email.";
       if (error.code === "auth/wrong-password")
         errorMessage = "Incorrect password.";
+      if (error.code === "auth/email-already-in-use")
+        errorMessage = "This email is already registered.";
+      if (error.code === "auth/invalid-email")
+        errorMessage = "Please enter a valid email address.";
+      if (error.code === "auth/weak-password")
+        errorMessage = "Password should be at least 6 characters.";
+
       Alert.alert("Auth Error", errorMessage);
     } finally {
       setLoading(false);
@@ -50,161 +62,195 @@ export default function Login() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.headerSection}>
-          <View style={styles.logoCircle}>
-            <Text style={styles.logoEmoji}>🎯</Text>
-          </View>
-          <Text style={styles.title}>
-            {isSignUp ? "Get Started" : "Welcome Back"}
-          </Text>
-          <Text style={styles.subtitle}>
-            {isSignUp
-              ? "Create an account to manage your tasks"
-              : "Sign in to continue your progress"}
-          </Text>
-        </View>
-
-        <View style={styles.formCard}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email Address</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="name@example.com"
-              placeholderTextColor="#A0A0A0"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor="#A0A0A0"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.mainBtn, loading && styles.btnDisabled]}
-            onPress={handleAuth}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <Text style={styles.btnText}>
-                {isSignUp ? "Create Account" : "Sign In"}
-              </Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setIsSignUp(!isSignUp)}
-            style={styles.switchBtn}
-          >
-            <Text style={styles.switchText}>
-              {isSignUp
-                ? "Already have an account? "
-                : "Don't have an account? "}
-              <Text style={styles.switchTextBold}>
-                {isSignUp ? "Log In" : "Sign Up"}
-              </Text>
+    <LinearGradient colors={["#F8F9FA", "#E9ECEF"]} style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header Section */}
+          <View style={styles.headerSection}>
+            <View style={styles.logoCircle}>
+              <Ionicons
+                name={isSignUp ? "person-add" : "log-in"}
+                size={40}
+                color="#6366f1"
+              />
+            </View>
+            <Text style={styles.title}>
+              {isSignUp ? "Create Account" : "Welcome Back"}
             </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            <Text style={styles.subtitle}>
+              {isSignUp
+                ? "Join us to organize your tasks easily"
+                : "Enter your details to access your dashboard"}
+            </Text>
+          </View>
+
+          {/* Form Card */}
+          <View style={styles.formCard}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Email Address</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons
+                  name="mail-outline"
+                  size={20}
+                  color="#A0A0A0"
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="name@example.com"
+                  placeholderTextColor="#A0A0A0"
+                  value={email}
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                />
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Password</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color="#A0A0A0"
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="••••••••"
+                  placeholderTextColor="#A0A0A0"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                />
+              </View>
+            </View>
+
+            {/* Forgot Password Link - Sirf Login mode mein nazar aayega */}
+            {!isSignUp && (
+              <TouchableOpacity
+                onPress={() => router.push("/forgot-password")}
+                style={styles.forgotBtn}
+              >
+                <Text style={styles.forgotText}>Forgot Password?</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={[styles.mainBtn, loading && styles.btnDisabled]}
+              onPress={handleAuth}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.btnText}>
+                  {isSignUp ? "Sign Up" : "Log In"}
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setIsSignUp(!isSignUp)}
+              style={styles.switchBtn}
+            >
+              <Text style={styles.switchText}>
+                {isSignUp
+                  ? "Already have an account? "
+                  : "Don't have an account? "}
+                <Text style={styles.switchTextBold}>
+                  {isSignUp ? "Log In" : "Sign Up"}
+                </Text>
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F8F9FA",
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: "center",
-    padding: 24,
-  },
-  headerSection: {
-    alignItems: "center",
-    marginBottom: 40,
-  },
+  container: { flex: 1 },
+  scrollContent: { flexGrow: 1, justifyContent: "center", padding: 24 },
+  headerSection: { alignItems: "center", marginBottom: 35 },
   logoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
     backgroundColor: "#FFF",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 20,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    elevation: 10,
+    shadowColor: "#6366f1",
+    shadowOpacity: 0.15,
+    shadowRadius: 15,
   },
-  logoEmoji: { fontSize: 40 },
   title: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#1A1A1A",
+    fontSize: 30,
+    fontWeight: "900",
+    color: "#1E293B",
     textAlign: "center",
   },
   subtitle: {
-    fontSize: 14,
-    color: "#636E72",
+    fontSize: 15,
+    color: "#64748B",
     textAlign: "center",
     marginTop: 8,
-    paddingHorizontal: 20,
+    paddingHorizontal: 15,
   },
   formCard: {
     backgroundColor: "#FFF",
     padding: 24,
-    borderRadius: 24,
+    borderRadius: 30,
     elevation: 8,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
-    shadowRadius: 15,
+    shadowRadius: 20,
   },
-  inputGroup: { marginBottom: 20 },
+  inputGroup: { marginBottom: 15 },
   label: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "#2D3436",
+    fontWeight: "700",
+    color: "#475569",
     marginBottom: 8,
+    marginLeft: 4,
   },
-  input: {
-    backgroundColor: "#F1F3F5",
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: "#2D3436",
-  },
-  mainBtn: {
-    backgroundColor: "#2D3436",
-    padding: 18,
-    borderRadius: 12,
-    marginTop: 10,
+  inputWrapper: {
+    flexDirection: "row",
     alignItems: "center",
-    elevation: 2,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    paddingHorizontal: 15,
+  },
+  inputIcon: { marginRight: 10 },
+  input: { flex: 1, height: 55, fontSize: 16, color: "#1E293B" },
+  forgotBtn: { alignSelf: "flex-end", marginBottom: 20 },
+  forgotText: { color: "#6366f1", fontWeight: "700", fontSize: 14 },
+  mainBtn: {
+    backgroundColor: "#6366f1",
+    paddingVertical: 16,
+    borderRadius: 15,
+    marginTop: 5,
+    alignItems: "center",
+    elevation: 5,
+    shadowColor: "#6366f1",
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
   },
   btnDisabled: { opacity: 0.7 },
-  btnText: { color: "#FFF", fontWeight: "700", fontSize: 16 },
-  switchBtn: { marginTop: 24, alignItems: "center" },
-  switchText: { color: "#636E72", fontSize: 14 },
-  switchTextBold: { color: "#2D3436", fontWeight: "700" },
+  btnText: { color: "#FFF", fontWeight: "800", fontSize: 17 },
+  switchBtn: { marginTop: 25, alignItems: "center" },
+  switchText: { color: "#64748B", fontSize: 14 },
+  switchTextBold: { color: "#6366f1", fontWeight: "800" },
 });

@@ -1,112 +1,373 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import {
+  collection,
+  doc,
+  getDocs,
+  onSnapshot,
+  orderBy,
+  query,
+  updateDoc,
+} from "firebase/firestore";
+import React, { useEffect, useState } from "react";
+import {
+  Alert,
+  FlatList,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { db } from "../../firebaseConfig";
 
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
+export default function ExploreScreen() {
+  const [tasks, setTasks] = useState([]);
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    completed: 0,
+    percent: 0,
+  });
+  const [showHistory, setShowHistory] = useState(true);
+  const [isModalVisible, setModalVisible] = useState(false);
 
-export default function TabTwoScreen() {
+  useEffect(() => {
+    const q = query(collection(db, "tasks"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const allTasks = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setTasks(allTasks);
+
+      let activeTasks = allTasks.filter((t) => !t.hidden);
+      let comp = activeTasks.filter((t) => t.completed).length;
+      let total = activeTasks.length;
+      let percentage = total > 0 ? Math.round((comp / total) * 100) : 0;
+
+      setStats({
+        total,
+        completed: comp,
+        pending: total - comp,
+        percent: percentage,
+      });
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const clearHistory = async () => {
+    Alert.alert(
+      "Clear History",
+      "Are you sure you want to clear completed tasks from the dashboard?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Yes, Clear All",
+          onPress: async () => {
+            try {
+              const querySnapshot = await getDocs(collection(db, "tasks"));
+              const updatePromises = [];
+              querySnapshot.forEach((docSnap) => {
+                const data = docSnap.data();
+                if (data.completed === true || data.completed === "true") {
+                  updatePromises.push(
+                    updateDoc(doc(db, "tasks", docSnap.id), { hidden: true }),
+                  );
+                }
+              });
+              if (updatePromises.length > 0) {
+                await Promise.all(updatePromises);
+              }
+            } catch (error) {
+              Alert.alert("Error", "Failed to update tasks.");
+            }
+          },
+          style: "destructive",
+        },
+      ],
+    );
+  };
+
+  // Reusable Empty State Component
+  const EmptySection = ({ message, icon }) => (
+    <View style={styles.emptyCard}>
+      <Ionicons name={icon} size={40} color="#E2E8F0" />
+      <Text style={styles.emptySectionText}>{message}</Text>
+    </View>
+  );
+
+  const TaskCard = ({ title, isDone, showStatus = true }) => (
+    <View
+      style={[styles.taskCard, isDone ? styles.cardDone : styles.cardPending]}
+    >
+      <View
+        style={[
+          styles.iconBox,
+          { backgroundColor: isDone ? "#d1fae5" : "#e0e7ff" },
+        ]}
+      >
+        <Ionicons
+          name={isDone ? "checkmark-done" : "flash"}
+          size={18}
+          color={isDone ? "#10b981" : "#4f46e5"}
+        />
+      </View>
+      <View style={{ flex: 1, marginLeft: 12 }}>
+        <Text style={[styles.taskTitle, isDone && styles.textDone]}>
+          {title}
+        </Text>
+        {showStatus && (
+          <Text style={styles.statusSub}>
+            {isDone ? "Completed" : "Pending"}
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+
+  const activePending = tasks.filter((t) => !t.completed && !t.hidden);
+  const activeCompleted = tasks.filter((t) => t.completed && !t.hidden);
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <View style={styles.headerRow}>
+        <View>
+          <Text style={styles.welcomeText}>Activity Hub</Text>
+        </View>
+        <TouchableOpacity onPress={clearHistory} style={styles.trashBtn}>
+          <Ionicons name="trash-outline" size={22} color="#ef4444" />
+        </TouchableOpacity>
+      </View>
+
+      <LinearGradient
+        colors={["#6366f1", "#a855f7"]}
+        style={styles.mainProgressCard}
+      >
+        <View>
+          <Text style={styles.progressTitle}>Productivity</Text>
+          <Text style={styles.progressSub}>
+            {stats.percent}% Tasks Finished
+          </Text>
+        </View>
+        <View style={styles.progressCircle}>
+          <Text style={styles.percentText}>{stats.percent}%</Text>
+        </View>
+      </LinearGradient>
+
+      <TouchableOpacity
+        style={styles.archiveBtn}
+        onPress={() => setModalVisible(true)}
+      >
+        <Ionicons name="book-outline" size={20} color="#fff" />
+        <Text style={styles.archiveBtnText}>View Full Task Archive</Text>
+      </TouchableOpacity>
+
+      <View style={styles.statsRow}>
+        <View style={styles.statBox}>
+          <Text style={styles.statNum}>{stats.pending}</Text>
+          <Text style={styles.statLabel}>Pending</Text>
+        </View>
+        <View style={styles.statBox}>
+          <Text style={[styles.statNum, { color: "#10b981" }]}>
+            {stats.completed}
+          </Text>
+          <Text style={styles.statLabel}>Completed</Text>
+        </View>
+      </View>
+
+      {/* --- Current Focus Section --- */}
+      <Text style={styles.sectionHeading}>Current Focus</Text>
+      <View style={{ marginTop: 10 }}>
+        {activePending.length > 0 ? (
+          activePending.map((item) => (
+            <TaskCard key={item.id} title={item.text} isDone={false} />
+          ))
+        ) : (
+          <EmptySection
+            message="No active tasks. Start something new!"
+            icon="rocket-outline"
+          />
+        )}
+      </View>
+
+      {/* --- Recent History Section --- */}
+      <TouchableOpacity
+        onPress={() => setShowHistory(!showHistory)}
+        style={styles.toggleHeader}
+      >
+        <Text style={styles.sectionHeading}>Recent History</Text>
+        <Ionicons
+          name={showHistory ? "chevron-up" : "chevron-down"}
+          size={20}
+          color="#6B7280"
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Explore
-        </ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image
-          source={require('@/assets/images/react-logo.png')}
-          style={{ width: 100, height: 100, alignSelf: 'center' }}
-        />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful{' '}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+      </TouchableOpacity>
+
+      {showHistory && (
+        <View>
+          {activeCompleted.length > 0 ? (
+            activeCompleted.map((item) => (
+              <TaskCard key={item.id} title={item.text} isDone={true} />
+            ))
+          ) : (
+            <EmptySection
+              message="No history yet. Finish a task to see it here!"
+              icon="time-outline"
+            />
+          )}
+        </View>
+      )}
+
+      {/* Archive Modal */}
+      <Modal visible={isModalVisible} animationType="slide">
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <View>
+              <Text style={styles.modalTitle}>Permanent Archive</Text>
+              <Text style={styles.modalSub}>All tasks ever created</Text>
+            </View>
+            <TouchableOpacity onPress={() => setModalVisible(false)}>
+              <Ionicons name="close-circle" size={35} color="#6366f1" />
+            </TouchableOpacity>
+          </View>
+          <FlatList
+            data={tasks}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <TaskCard title={item.text} isDone={item.completed} />
+            )}
+            contentContainerStyle={{ padding: 20 }}
+            ListEmptyComponent={
+              <EmptySection
+                message="The archive is empty."
+                icon="folder-open-outline"
+              />
+            }
+          />
+        </View>
+      </Modal>
+
+      <View style={{ height: 100 }} />
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  container: { flex: 1, backgroundColor: "#F8FAFC", paddingHorizontal: 20 },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 50,
+    marginBottom: 20,
   },
-  titleContainer: {
-    flexDirection: 'row',
-    gap: 8,
+  welcomeText: { fontSize: 26, fontWeight: "900", color: "#1E293B" },
+  dateText: { fontSize: 14, color: "#94A3B8" },
+  trashBtn: { padding: 12, backgroundColor: "#FFE4E6", borderRadius: 15 },
+  mainProgressCard: {
+    borderRadius: 25,
+    padding: 25,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    elevation: 8,
   },
+  progressTitle: { fontSize: 18, fontWeight: "bold", color: "#fff" },
+  progressSub: { fontSize: 14, color: "rgba(255,255,255,0.8)" },
+  progressCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#fff",
+  },
+  percentText: { color: "#fff", fontWeight: "bold" },
+  archiveBtn: {
+    backgroundColor: "#1E293B",
+    padding: 15,
+    borderRadius: 18,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 20,
+    gap: 10,
+    elevation: 4,
+  },
+  archiveBtnText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
+  statsRow: { flexDirection: "row", gap: 12, marginTop: 20, marginBottom: 20 },
+  statBox: {
+    flex: 1,
+    backgroundColor: "#fff",
+    padding: 15,
+    borderRadius: 20,
+    alignItems: "center",
+    elevation: 2,
+  },
+  statNum: { fontSize: 22, fontWeight: "bold", color: "#6366f1" },
+  statLabel: { fontSize: 12, color: "#64748B" },
+  sectionHeading: { fontSize: 18, fontWeight: "bold", color: "#334155" },
+  toggleHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 25,
+    marginBottom: 10,
+  },
+  taskCard: {
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    elevation: 1,
+  },
+  iconBox: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  taskTitle: { fontSize: 15, fontWeight: "600", color: "#334155" },
+  statusSub: { fontSize: 11, color: "#94A3B8" },
+  textDone: { textDecorationLine: "line-through", color: "#94A3B8" },
+
+  // Empty State Styles
+  emptyCard: {
+    backgroundColor: "#fff",
+    padding: 30,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    borderStyle: "dashed",
+  },
+  emptySectionText: {
+    marginTop: 10,
+    color: "#94A3B8",
+    fontSize: 14,
+    fontWeight: "500",
+    textAlign: "center",
+  },
+
+  modalContainer: { flex: 1, backgroundColor: "#F1F5F9" },
+  modalHeader: {
+    padding: 25,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+    paddingTop: 50,
+  },
+  modalTitle: { fontSize: 22, fontWeight: "bold", color: "#1E293B" },
+  modalSub: { fontSize: 13, color: "#64748B" },
 });
