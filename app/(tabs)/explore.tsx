@@ -23,7 +23,7 @@ import {
 import { db } from "../../firebaseConfig";
 
 export default function ExploreScreen() {
-  const [tasks, setTasks] = useState([]);
+  const [tasks, setTasks] = useState<any[]>([]);
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -42,8 +42,8 @@ export default function ExploreScreen() {
       }));
       setTasks(allTasks);
 
-      let activeTasks = allTasks.filter((t) => !t.hidden);
-      let comp = activeTasks.filter((t) => t.completed).length;
+      let activeTasks = allTasks.filter((t: any) => !t.hidden);
+      let comp = activeTasks.filter((t: any) => t.completed).length;
       let total = activeTasks.length;
       let percentage = total > 0 ? Math.round((comp / total) * 100) : 0;
 
@@ -68,7 +68,7 @@ export default function ExploreScreen() {
           onPress: async () => {
             try {
               const querySnapshot = await getDocs(collection(db, "tasks"));
-              const updatePromises = [];
+              const updatePromises: any[] = [];
               querySnapshot.forEach((docSnap) => {
                 const data = docSnap.data();
                 if (data.completed === true || data.completed === "true") {
@@ -90,15 +90,22 @@ export default function ExploreScreen() {
     );
   };
 
-  // Reusable Empty State Component
-  const EmptySection = ({ message, icon }) => (
+  const EmptySection = ({ message, icon }: { message: any; icon: any }) => (
     <View style={styles.emptyCard}>
       <Ionicons name={icon} size={40} color="#E2E8F0" />
       <Text style={styles.emptySectionText}>{message}</Text>
     </View>
   );
 
-  const TaskCard = ({ title, isDone, showStatus = true }) => (
+  const TaskCard = ({
+    title,
+    isDone,
+    showStatus = true,
+  }: {
+    title: any;
+    isDone: any;
+    showStatus?: boolean;
+  }) => (
     <View
       style={[styles.taskCard, isDone ? styles.cardDone : styles.cardPending]}
     >
@@ -127,8 +134,8 @@ export default function ExploreScreen() {
     </View>
   );
 
-  const activePending = tasks.filter((t) => !t.completed && !t.hidden);
-  const activeCompleted = tasks.filter((t) => t.completed && !t.hidden);
+  const activePending = tasks.filter((t: any) => !t.completed && !t.hidden);
+  const activeCompleted = tasks.filter((t: any) => t.completed && !t.hidden);
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -181,7 +188,7 @@ export default function ExploreScreen() {
       <Text style={styles.sectionHeading}>Current Focus</Text>
       <View style={{ marginTop: 10 }}>
         {activePending.length > 0 ? (
-          activePending.map((item) => (
+          activePending.map((item: any) => (
             <TaskCard key={item.id} title={item.text} isDone={false} />
           ))
         ) : (
@@ -208,7 +215,7 @@ export default function ExploreScreen() {
       {showHistory && (
         <View>
           {activeCompleted.length > 0 ? (
-            activeCompleted.map((item) => (
+            activeCompleted.map((item: any) => (
               <TaskCard key={item.id} title={item.text} isDone={true} />
             ))
           ) : (
@@ -234,8 +241,8 @@ export default function ExploreScreen() {
           </View>
           <FlatList
             data={tasks}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
+            keyExtractor={(item: any) => item.id}
+            renderItem={({ item }: { item: any }) => (
               <TaskCard title={item.text} isDone={item.completed} />
             )}
             contentContainerStyle={{ padding: 20 }}
@@ -327,6 +334,8 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     elevation: 1,
   },
+  cardDone: {},
+  cardPending: {},
   iconBox: {
     width: 34,
     height: 34,
@@ -338,7 +347,6 @@ const styles = StyleSheet.create({
   statusSub: { fontSize: 11, color: "#94A3B8" },
   textDone: { textDecorationLine: "line-through", color: "#94A3B8" },
 
-  // Empty State Styles
   emptyCard: {
     backgroundColor: "#fff",
     padding: 30,

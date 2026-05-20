@@ -8,12 +8,11 @@ import { StatusBar } from "expo-status-bar";
 import { onAuthStateChanged } from "firebase/auth";
 import { useEffect, useState } from "react";
 import "react-native-reanimated";
-import { auth } from "../firebaseConfig"; // Path check kar lein agar file root mein hai
+import { auth } from "../firebaseConfig";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
   initialRouteName: "(auth)/login",
 };
 
@@ -24,17 +23,18 @@ export default function RootLayout() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Ye function check karta rahega ke user login hai ya nahi
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       const inAuthGroup = segments[0] === "(auth)";
+      const isForgotPasswordScreen = (segments as string[]).includes(
+        "forgot-password",
+      );
 
       if (!user && !inAuthGroup) {
-        // Agar login nahi hai to login screen par bhejo
         router.replace("/(auth)/login");
-      } else if (user && inAuthGroup) {
-        // Agar login ho gaya to dashboard par bhejo
+      } else if (user && inAuthGroup && !isForgotPasswordScreen) {
         router.replace("/(tabs)");
       }
+
       setIsReady(true);
     });
 
@@ -44,8 +44,8 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <Stack screenOptions={{ headerShown: false }}>
-        {/* Screens ki list */}
         <Stack.Screen name="(auth)/login" />
+        <Stack.Screen name="(auth)/forgot-password" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="modal"

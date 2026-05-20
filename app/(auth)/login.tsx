@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router"; // Navigation ke liye
+import { router } from "expo-router";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -27,35 +27,44 @@ export default function Login() {
   const [isSignUp, setIsSignUp] = useState(false);
 
   const handleAuth = async () => {
-    if (!email || !password) {
-      Alert.alert("Input Required", "Please fill in all fields.");
+    if (!email.trim() || !password.trim()) {
+      Alert.alert("Input Required ⚠️", "Please fill in all fields.");
       return;
     }
 
     setLoading(true);
     try {
       if (isSignUp) {
-        await createUserWithEmailAndPassword(auth, email, password);
-        Alert.alert("Welcome!", "Your account has been created successfully.");
+        await createUserWithEmailAndPassword(auth, email.trim(), password);
+        Alert.alert(
+          "Welcome! 🎉",
+          "Your account has been created successfully.",
+          [{ text: "OK", onPress: () => router.replace("/(tabs)") }],
+        );
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        await signInWithEmailAndPassword(auth, email.trim(), password);
+        router.replace("/(tabs)");
       }
     } catch (error: any) {
-      console.log(error.code);
+      console.log("Auth Error Code:", error.code);
       let errorMessage = "An error occurred. Please try again.";
 
-      if (error.code === "auth/user-not-found")
-        errorMessage = "No user found with this email.";
-      if (error.code === "auth/wrong-password")
-        errorMessage = "Incorrect password.";
-      if (error.code === "auth/email-already-in-use")
+      if (
+        error.code === "auth/user-not-found" ||
+        error.code === "auth/invalid-credential" ||
+        error.code === "auth/wrong-password"
+      )
+        errorMessage = "Email ya Password galat hai. Dobara check karein!";
+      else if (error.code === "auth/email-already-in-use")
         errorMessage = "This email is already registered.";
-      if (error.code === "auth/invalid-email")
+      else if (error.code === "auth/invalid-email")
         errorMessage = "Please enter a valid email address.";
-      if (error.code === "auth/weak-password")
+      else if (error.code === "auth/weak-password")
         errorMessage = "Password should be at least 6 characters.";
+      else if (error.code === "auth/network-request-failed")
+        errorMessage = "Internet checked karein, connection fail ho gaya.";
 
-      Alert.alert("Auth Error", errorMessage);
+      Alert.alert("Auth Error ❌", errorMessage);
     } finally {
       setLoading(false);
     }
@@ -109,6 +118,7 @@ export default function Login() {
                   onChangeText={setEmail}
                   autoCapitalize="none"
                   keyboardType="email-address"
+                  editable={!loading}
                 />
               </View>
             </View>
@@ -129,11 +139,12 @@ export default function Login() {
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry
+                  editable={!loading}
                 />
               </View>
             </View>
 
-            {/* Forgot Password Link - Sirf Login mode mein nazar aayega */}
+            {/* Forgot Password Link */}
             {!isSignUp && (
               <TouchableOpacity
                 onPress={() => router.push("/forgot-password")}
@@ -160,6 +171,7 @@ export default function Login() {
             <TouchableOpacity
               onPress={() => setIsSignUp(!isSignUp)}
               style={styles.switchBtn}
+              disabled={loading}
             >
               <Text style={styles.switchText}>
                 {isSignUp

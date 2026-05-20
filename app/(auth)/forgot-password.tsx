@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { auth } from "../../firebaseConfig"; // Check path: if file is deep, use ../../../
+import { auth } from "../../firebaseConfig";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -28,7 +28,7 @@ export default function ForgotPassword() {
       Alert.alert(
         "Link Sent",
         "A password reset link has been sent to your email. Please check your inbox (and spam folder).",
-        [{ text: "OK", onPress: () => router.back() }], // Reset ke baad wapis login pe bhej dega
+        [{ text: "OK", onPress: () => router.back() }],
       );
       setEmail("");
     } catch (error: any) {
