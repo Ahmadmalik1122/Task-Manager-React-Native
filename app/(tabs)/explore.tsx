@@ -1,13 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { getAuth } from "firebase/auth"; // Added for authentication state
 import {
   collection,
   doc,
-  getDocs,
   onSnapshot,
   orderBy,
   query,
   updateDoc,
+  where
 } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import {
@@ -34,30 +35,53 @@ export default function ExploreScreen() {
   const [isModalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
-    const q = query(collection(db, "tasks"), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const allTasks = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setTasks(allTasks);
+    const auth = getAuth();
+    const user = auth.currentUser;
 
-      let activeTasks = allTasks.filter((t: any) => !t.hidden);
-      let comp = activeTasks.filter((t: any) => t.completed).length;
-      let total = activeTasks.length;
-      let percentage = total > 0 ? Math.round((comp / total) * 100) : 0;
+    if (user) {
+      // Security Patch: Added 'where' filter to query only the logged-in user's tasks
+      const q = query(
+        collection(db, "tasks"),
+        where("userId", "==", user.uid),
+        orderBy("createdAt", "desc"),
+      );
 
-      setStats({
-        total,
-        completed: comp,
-        pending: total - comp,
-        percent: percentage,
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const allTasks = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setTasks(allTasks);
+
+        let activeTasks = allTasks.filter((t: any) => !t.hidden);
+        let comp = activeTasks.filter((t: any) => t.completed).length;
+        let total = activeTasks.length;
+        let percentage = total > 0 ? Math.round((comp / total) * 100) : 0;
+
+        setStats({
+          total,
+          completed: comp,
+          pending: total - comp,
+          percent: percentage,
+        });
       });
-    });
-    return () => unsubscribe();
+      return () => unsubscribe();
+    } else {
+      // Clear data if no user is signed in
+      setTasks([]);
+      setStats({ total: 0, pending: 0, completed: 0, percent: 0 });
+    }
   }, []);
 
   const clearHistory = async () => {
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user) {
+      Alert.alert("Error", "You must be logged in to clear history.");
+      return;
+    }
+
     Alert.alert(
       "Clear History",
       "Are you sure you want to clear completed tasks from the dashboard?",
@@ -67,16 +91,18 @@ export default function ExploreScreen() {
           text: "Yes, Clear All",
           onPress: async () => {
             try {
-              const querySnapshot = await getDocs(collection(db, "tasks"));
-              const updatePromises: any[] = [];
-              querySnapshot.forEach((docSnap) => {
-                const data = docSnap.data();
-                if (data.completed === true || data.completed === "true") {
-                  updatePromises.push(
-                    updateDoc(doc(db, "tasks", docSnap.id), { hidden: true }),
-                  );
-                }
-              });
+              // Safety Patch: Only update completed tasks belonging strictly to this user
+              const updatePromises = tasks
+                .filter(
+                  (t: any) =>
+                    (t.completed === true || t.completed === "true") &&
+                    !t.hidden &&
+                    t.userId === user.uid,
+                )
+                .map((t: any) =>
+                  updateDoc(doc(db, "tasks", t.id), { hidden: true }),
+                );
+
               if (updatePromises.length > 0) {
                 await Promise.all(updatePromises);
               }
