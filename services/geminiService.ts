@@ -1,7 +1,11 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const processTaskWithAI = async (userInput: string) => {
-  const apiKey = "AIzaSyC-SuyDBQDc0ZVnNBkLs7ELyM2_kX-t8gg";
+  const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+
+  if (!apiKey) {
+    console.error("⚠️ Gemini API Key missing in environment variables!");
+  }
 
   const systemPrompt = `
     You are an expert assistant for a Task Management App. 
@@ -9,7 +13,7 @@ export const processTaskWithAI = async (userInput: string) => {
     
     Strictly follow these rules:
     1. Return ONLY a valid raw JSON object. No markdown, no \`\`\`json blocks.
-    2. Today's date is 2026-05-20. Use this to calculate relative dates.
+    2. Today's date is 2026-05-21. Use this to calculate relative dates.
     3. Format 'dueDate' as YYYY-MM-DD.
     4. Format 'dueTime' as HH:MM (24-hour format). If the user mentions a specific time like "4 PM", convert it to 24-hour format ("16:00"). If no time is mentioned, default to "12:00".
     
@@ -23,7 +27,7 @@ export const processTaskWithAI = async (userInput: string) => {
 
   try {
     console.log("Sending request via official Gemini SDK...");
-    const genAI = new GoogleGenerativeAI(apiKey);
+    const genAI = new GoogleGenerativeAI(apiKey || "");
     const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
 
     const result = await model.generateContent(
@@ -63,7 +67,7 @@ export const processTaskWithAI = async (userInput: string) => {
 
     return {
       title: userInput || "New Task",
-      dueDate: "2026-05-20",
+      dueDate: "2026-05-21",
       dueTime: fallbackTime,
     };
   }
