@@ -54,7 +54,7 @@ export default function Login() {
         error.code === "auth/invalid-credential" ||
         error.code === "auth/wrong-password"
       )
-        errorMessage = "Email ya Password galat hai. Dobara check karein!";
+        errorMessage = "Email or Password is incorrect. Please check again! ";
       else if (error.code === "auth/email-already-in-use")
         errorMessage = "This email is already registered.";
       else if (error.code === "auth/invalid-email")
@@ -62,7 +62,7 @@ export default function Login() {
       else if (error.code === "auth/weak-password")
         errorMessage = "Password should be at least 6 characters.";
       else if (error.code === "auth/network-request-failed")
-        errorMessage = "Internet checked karein, connection fail ho gaya.";
+        errorMessage = "Please check your internet connection and try again.";
 
       Alert.alert("Auth Error ❌", errorMessage);
     } finally {

@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { getAuth } from "firebase/auth"; // Added for authentication state
+import { getAuth } from "firebase/auth";
 import {
   collection,
   doc,
@@ -8,7 +8,7 @@ import {
   orderBy,
   query,
   updateDoc,
-  where
+  where,
 } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import {
@@ -39,7 +39,6 @@ export default function ExploreScreen() {
     const user = auth.currentUser;
 
     if (user) {
-      // Security Patch: Added 'where' filter to query only the logged-in user's tasks
       const q = query(
         collection(db, "tasks"),
         where("userId", "==", user.uid),
@@ -67,7 +66,6 @@ export default function ExploreScreen() {
       });
       return () => unsubscribe();
     } else {
-      // Clear data if no user is signed in
       setTasks([]);
       setStats({ total: 0, pending: 0, completed: 0, percent: 0 });
     }
@@ -91,7 +89,6 @@ export default function ExploreScreen() {
           text: "Yes, Clear All",
           onPress: async () => {
             try {
-              // Safety Patch: Only update completed tasks belonging strictly to this user
               const updatePromises = tasks
                 .filter(
                   (t: any) =>
